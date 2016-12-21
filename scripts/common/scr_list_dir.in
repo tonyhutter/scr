@@ -106,7 +106,13 @@ if (not defined $conf{base}) {
     exit 1;
   }
 
-  $suffix = "$conf{user}/scr.$conf{jobid}";
+  if ($dir eq "cache") {
+    # cache dirs have an extra jobid
+    $suffix = "$conf{user}/$conf{jobid}/scr.$conf{jobid}";
+  } else {
+    # control dir
+    $suffix = "$conf{user}/scr.$conf{jobid}";
+  }
 }
 
 # ok, all values are here, print out the directory name and exit with success

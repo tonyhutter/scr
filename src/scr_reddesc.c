@@ -508,6 +508,7 @@ int scr_reddesc_create_from_hash(
   /* build the directory name */
   scr_path* dir = scr_path_from_str(d->base);
   scr_path_append_str(dir, scr_username);
+  scr_path_append_str(dir, scr_jobid);
   scr_path_append_strf(dir, "scr.%s", scr_jobid);
 //  scr_path_append_strf(dir, "index.%d", d->index);
   scr_path_reduce(dir);

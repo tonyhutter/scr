@@ -109,26 +109,6 @@ foreach my $type ("cntl", "cache") {
         }
       }
     }
-
-    # attempt to write to directory
-    foreach my $dir (@dirs) {
-      # define a filename for a test file
-      my $testfile = "$dir/testfile.txt";
-
-      # attempt to touch the test file
-      `touch $testfile`;
-      if ($? != 0) {
-        print "FAIL: Could not touch test file: $testfile\n";
-        exit 1;
-      }
-
-      # attempt to remove the test file
-      `rm -f $testfile`;
-      if ($? != 0) {
-        print "FAIL: Could not rm test file: $testfile\n";
-        exit 1;
-      }
-    }
   }
 }
 
