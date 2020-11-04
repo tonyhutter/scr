@@ -82,4 +82,5 @@ int kvtree_write_path(const spath* path, const kvtree* tree);
  * return spath of fully qualified path, user should free */
 spath* scr_get_prefix(const char* prefix);
 
+int asprintf(char** strp, const char* fmt, ...);
 #endif

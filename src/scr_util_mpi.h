@@ -64,10 +64,12 @@ axl_xfer_t scr_xfer_str_to_axl_type(const char* str);
 
 int scr_axl(
   const char* name,
+  char* state_file,
   int num_files,
   const char** src_filelist,
   const char** dest_filelist,
   axl_xfer_t type,
+  int no_wait,
   MPI_Comm comm
 );
 

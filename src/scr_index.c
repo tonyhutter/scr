@@ -2154,6 +2154,7 @@ int index_add(const spath* prefix, const char* name)
       if (scr_summary_read(dataset_path, summary) == SCR_SUCCESS) {
         /* get the dataset hash for this directory */
         scr_dataset* dataset = kvtree_get(summary, SCR_SUMMARY_6_KEY_DATASET);
+
         if (dataset != NULL) {
           /* get the dataset name */
           char* dataset_name;
@@ -2166,11 +2167,6 @@ int index_add(const spath* prefix, const char* name)
               /* found the name, get its complete flag */
               int complete = 0;
               kvtree_util_get_int(summary, SCR_SUMMARY_6_KEY_COMPLETE, &complete);
-
-              /* inform user that we found the dataset */
-              char* path = spath_strdup(dataset_path);
-              printf("Found `%s' as dataset %d at %s\n", name, id, path);
-              scr_free(&path);
 
               /* we found a match, however, there might be more than one,
                * which we consider to be an error, so just remember this
@@ -2185,6 +2181,8 @@ int index_add(const spath* prefix, const char* name)
                 rc = SCR_FAILURE;
               }
             }
+          } else {
+            printf("Unable to get dataset name\n");
           }
         }
       }

@@ -224,7 +224,7 @@ void scr_allabort(const char* file, int line, int code, const char* format, ...)
         va_start(args, format);
         vsnprintf(str, size, format, args);
         va_end(args);
-    
+
         /* print string provided by caller */
         scr_abort(code, "%s @ %s:%d", str, file, line);
       } else {
@@ -307,6 +307,7 @@ axl_xfer_t scr_xfer_str_to_axl_type(const char* str)
     {"SYNC",     AXL_XFER_SYNC},
     {"DATAWARP", AXL_XFER_ASYNC_DW},
     {"BBAPI",    AXL_XFER_ASYNC_BBAPI},
+    {"BBAPI_POSTSTAGE",    AXL_XFER_ASYNC_BBAPI},
     {"CPPR",     AXL_XFER_ASYNC_CPPR},
   };
 
@@ -324,16 +325,18 @@ axl_xfer_t scr_xfer_str_to_axl_type(const char* str)
 
 int scr_axl(
   const char* name,
+  char* state_file,
   int num_files,
   const char** src_filelist,
   const char** dest_filelist,
   axl_xfer_t type,
+  int no_wait,
   MPI_Comm comm)
 {
   int rc = SCR_SUCCESS;
 
   /* define a transfer handle */
-  int id = AXL_Create_comm(type, name, NULL, comm);
+  int id = AXL_Create_comm(type, name, state_file, comm);
   if (id < 0) {
     scr_err("Failed to create AXL transfer handle @ %s:%d",
       __FILE__, __LINE__
@@ -352,7 +355,7 @@ int scr_axl(
       scr_err("Failed to add file to AXL transfer handle %d: %s --> %s @ %s:%d",
         id, src_file, dest_file, __FILE__, __LINE__
       );
-      rc = SCR_FAILURE;
+      return SCR_FAILURE;
     }
   }
 
@@ -361,7 +364,15 @@ int scr_axl(
     scr_err("Failed to dispatch AXL transfer handle %d @ %s:%d",
       id, __FILE__, __LINE__
     );
-    rc = SCR_FAILURE;
+    return SCR_FAILURE;
+  }
+
+  if (no_wait) {
+    /*
+     * We're doing an async transfer in the background that we will use
+     * scr_poststage to finalize, so no need to AXL_Wait here.
+     */
+    return SCR_SUCCESS;
   }
 
   /* wait for transfer to complete */
@@ -371,7 +382,7 @@ int scr_axl(
     scr_err("Failed to wait on AXL transfer handle %d @ %s:%d",
       id, __FILE__, __LINE__
     );
-    rc = SCR_FAILURE;
+    return SCR_FAILURE;
   }
 
   /* release the handle */
@@ -379,7 +390,7 @@ int scr_axl(
     scr_err("Failed to free AXL transfer handle %d @ %s:%d",
       id, __FILE__, __LINE__
     );
-    rc = SCR_FAILURE;
+    return SCR_FAILURE;
   }
 
   return rc;

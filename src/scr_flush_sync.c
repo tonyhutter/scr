@@ -31,6 +31,8 @@ static int scr_flush_sync_data(scr_cache_index* cindex, int id, kvtree* file_lis
   int numfiles;
   char** src_filelist;
   char** dst_filelist;
+  char* state_file = NULL;
+
   scr_flush_list_alloc(file_list, &numfiles, &src_filelist, &dst_filelist);
 
   /* get the dataset of this flush */
@@ -58,6 +60,10 @@ static int scr_flush_sync_data(scr_cache_index* cindex, int id, kvtree* file_lis
     scr_free(&path);
   }
   MPI_Barrier(scr_comm_world);
+
+  dataset_path_str = spath_strdup(dataset_path);
+  asprintf(&state_file, "%s/rank_%d.state_file", dataset_path_str, scr_my_rank_world);
+  scr_free(&dataset_path_str);
 
   /* define path for rank2file map */
   spath_append_str(dataset_path, "rank2file");
@@ -112,9 +118,17 @@ static int scr_flush_sync_data(scr_cache_index* cindex, int id, kvtree* file_lis
 
     /* TODO: gather list of files to leader of store descriptor,
      * use communicator of leaders for AXL, then bcast result back */
-
+    int no_wait = 0;
+    if (strcasecmp(storedesc->xfer, "bbapi_poststage") == 0) {
+      /*
+       * "bbapi_poststage" means the BBAPI can continue transferring the
+       * checkpoints "in the background" after your job ends.  The transfers
+       * will then ultimately get finalized by the scr_poststage script.
+       */
+      no_wait = 1;
+    }
     /* write files (via AXL) */
-    if (scr_axl(dset_name, numfiles, (const char**) src_filelist, (const char **) dst_filelist, xfer_type, scr_comm_world) != SCR_SUCCESS) {
+    if (scr_axl(dset_name, state_file, numfiles, (const char**) src_filelist, (const char **) dst_filelist, xfer_type, no_wait, scr_comm_world) != SCR_SUCCESS) {
       success = 0;
     }
   } else {
@@ -130,6 +144,7 @@ static int scr_flush_sync_data(scr_cache_index* cindex, int id, kvtree* file_lis
 
   /* free path and file name */
   scr_free(&rank2file);
+  scr_free(&state_file);
   spath_delete(&dataset_path);
 
   /* free our file list */
@@ -162,6 +177,12 @@ int scr_flush_sync(scr_cache_index* cindex, int id)
   char* dset_name = NULL;
   scr_dataset_get_name(dataset, &dset_name);
 
+  const scr_storedesc* storedesc = scr_cache_get_storedesc(cindex, id);
+  int is_poststage = 0;
+  if (strcasecmp(storedesc->xfer, "bbapi_poststage") == 0) {
+      is_poststage = 1;
+  }
+
   /* this may take a while, so tell user what we're doing */
   if (scr_my_rank_world == 0) {
     scr_dbg(1, "Initiating flush of dataset %d `%s'", id, dset_name);
@@ -189,7 +210,6 @@ int scr_flush_sync(scr_cache_index* cindex, int id)
       return SCR_SUCCESS;
     }
   }
-
   /* log the flush start */
   if (scr_my_rank_world == 0) {
     if (scr_log_enable) {
@@ -216,17 +236,25 @@ int scr_flush_sync(scr_cache_index* cindex, int id)
   }
 
   /* write summary file */
-  if (flushed == SCR_SUCCESS &&
+  if (!is_poststage && flushed == SCR_SUCCESS &&
       scr_flush_complete(cindex, id, file_list) != SCR_SUCCESS)
   {
     flushed = SCR_FAILURE;
+  } else if (is_poststage) {
+    /*
+     * We'll complete our flush in poststage, so for now, just lie and say
+     * everything's done.
+     */
+    flushed = SCR_SUCCESS;
   }
 
   /* free data structures */
   kvtree_delete(&file_list);
 
   /* remove sync flushing marker from flush file */
-  scr_flush_file_location_unset(id, SCR_FLUSH_KEY_LOCATION_SYNC_FLUSHING);
+  if (!is_poststage) {
+    scr_flush_file_location_unset(id, SCR_FLUSH_KEY_LOCATION_SYNC_FLUSHING);
+  }
 
   /* stop timer, compute bandwidth, and report performance */
   if (scr_my_rank_world == 0) {

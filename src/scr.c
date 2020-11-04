@@ -1255,6 +1255,12 @@ static int scr_start_output(const char* name, int flags)
         if (strcmp(base, scr_rd->base) == 0) {
           if (! scr_flush_file_is_flushing(dsets[i])) {
             /* this dataset is in our base, and it's not being flushed, so delete it */
+
+	    /* Special case, don't delete it if it bbapi_poststage */
+	    if (strcasecmp(sd->xfer, "bbapi_poststage") == 0) {
+		continue;
+	    }
+
             scr_cache_delete(scr_cindex, dsets[i]);
             nckpts_base--;
           } else if (flushing == -1) {
@@ -2357,8 +2363,13 @@ int SCR_Finalize()
     }
   }
 
+  const scr_storedesc* storedesc = scr_cache_get_storedesc(scr_cindex, scr_dataset_id);
+  int is_poststage = 0;
+  if (strcasecmp(storedesc->xfer, "bbapi_poststage") == 0) {
+      is_poststage = 1;
+  }
   /* flush checkpoint set if we need to */
-  if (scr_flush > 0 && scr_flush_file_need_flush(scr_ckpt_dset_id)) {
+  if (!is_poststage && scr_flush > 0 && scr_flush_file_need_flush(scr_ckpt_dset_id)) {
     if (scr_my_rank_world == 0) {
       scr_dbg(2, "Sync flush in SCR_Finalize @ %s:%d", __FILE__, __LINE__);
     }

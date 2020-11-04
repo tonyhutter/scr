@@ -239,9 +239,18 @@ static int scr_fetch_data(
     /* get AXL transfer type */
     //const scr_storedesc* storedesc = scr_cache_get_storedesc(cindex, id);
     axl_xfer_t xfer_type = scr_xfer_str_to_axl_type(SCR_FETCH_TYPE);
+    int no_wait = 0;
+    if (strcasecmp(SCR_FETCH_TYPE, "bbapi_poststage") == 0) {
+      /*
+       * "bbapi_poststage" means the BBAPI can continue transferring the
+       * checkpoints "in the background" after your job ends.  The transfers
+       * will then ultimately get finalized by the scr_poststage script.
+       */
+      no_wait = 1;
+    }
 
     /* fetch these files into the directory */
-    if (scr_axl(dset_name, num_files, src_filelist, dest_filelist, xfer_type, scr_comm_world) != SCR_SUCCESS) {
+    if (scr_axl(dset_name, NULL, num_files, src_filelist, dest_filelist, xfer_type, no_wait, scr_comm_world) != SCR_SUCCESS) {
       success = 0;
     }
 

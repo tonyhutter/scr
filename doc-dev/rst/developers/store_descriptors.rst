@@ -102,10 +102,17 @@ This key is optional, and it defaults to 1 if not specified.  ``TYPE``
 is the AXL transfer type used to copy files into the store descriptor.
 Values for `TYPE` include:
 
-sync:       A basic synchronous file copy
-pthread:    Multi-threaded file copy
-bbapi:      Use the IBM Burst Buffer API (if available)
-dw:         Use the Cray DataWarp API (if available)
+sync:          A basic synchronous file copy
+pthread:       Multi-threaded file copy
+bbapi:         Use the IBM Burst Buffer API (if available)
+bbapi_poststage:   Use the IBM Burst Buffer API in the background.  This starts
+               a transfer but doesn't wait for it to finish.  This can be used
+               to launch a checkpoint transfer near the end of your job, and
+               have it run "in the background" after your job finishes. You need
+               make sure to specify the `scr_poststage.sh` as your 2nd-half
+               post-stage script in bsub to finalize the transfers.  See
+               examples/test_scr_poststage.sh for a detailed example.
+dw:            Use the Cray DataWarp API (if available)
 
 ``TYPE`` is optional, and will default to pthread if not specified.
 
